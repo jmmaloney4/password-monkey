@@ -1,22 +1,23 @@
 /*** ------------------------------------------------------------------------------ ***
-*
-* Copyright (C) 2015, Jack Maloney
-*
-* Permission to use, copy, modify, and/or distribute this software for any
-* purpose with or without fee is hereby granted, provided that the above
-* copyright notice and this permission notice appear in all copies.
-* THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-*
-* WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-* MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-* ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-* WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-* ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-* OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-*
-*** ------------------------------------------------------------------------------ ***/
+ *
+ * Copyright (C) 2015, Jack Maloney
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ *
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ *** ------------------------------------------------------------------------------ ***/
 
 #include <pmcore/aes.h>
+#include <stdio.h>
 
 uint8_t PMAESSBoxData[256] =
 {
@@ -90,92 +91,161 @@ uint8_t PMAESRcon(uint8_t index) {
 }
 
 uint8_t PMAESBlockByteAt(PMAESBlock* block, uint8_t row, uint8_t col) {
-    return block->data[((col - 1) * 4) + row];
+    return block->data[(col == 0 ? 0 : (col * 4)) + row];
 }
 
 uint8_t PMAESKeyByteAt(PMAESKey* key, uint8_t row, uint8_t col) {
-    return key->data[((col - 1) * 4) + row];
+    return key->data[(col == 0 ? 0 : (col * 4)) + row];
 }
 
 void PMAESBlockSetByteAt(PMAESBlock* block, uint8_t row, uint8_t col, uint8_t value) {
-    block->data[((col - 1) * 4) + row] = value;
+    block->data[(col == 0 ? 0 : (col * 4)) + row] = value;
 }
 
 void PMAESKeySetByteAt(PMAESKey* key, uint8_t row, uint8_t col, uint8_t value) {
-    key->data[((col - 1) * 4) + row] = value;
+    key->data[(col == 0 ? 0 : (col * 4)) + row] = value;
 }
 
 void PMAESShiftRows(PMAESBlock* block) {
-    PMAESBlockSetByteAt(block, 1, 1, PMAESBlockByteAt(block, 1, 0));
-    PMAESBlockSetByteAt(block, 1, 2, PMAESBlockByteAt(block, 1, 1));
-    PMAESBlockSetByteAt(block, 1, 3, PMAESBlockByteAt(block, 1, 2));
-    PMAESBlockSetByteAt(block, 1, 0, PMAESBlockByteAt(block, 1, 3));
+    PMAESBlock nblock;
     
-    PMAESBlockSetByteAt(block, 2, 2, PMAESBlockByteAt(block, 2, 0));
-    PMAESBlockSetByteAt(block, 2, 3, PMAESBlockByteAt(block, 2, 1));
-    PMAESBlockSetByteAt(block, 2, 0, PMAESBlockByteAt(block, 2, 2));
-    PMAESBlockSetByteAt(block, 2, 1, PMAESBlockByteAt(block, 2, 3));
+    PMAESBlockSetByteAt(&nblock, 0, 0, PMAESBlockByteAt(block, 0, 0));
+    PMAESBlockSetByteAt(&nblock, 0, 1, PMAESBlockByteAt(block, 0, 1));
+    PMAESBlockSetByteAt(&nblock, 0, 2, PMAESBlockByteAt(block, 0, 2));
+    PMAESBlockSetByteAt(&nblock, 0, 3, PMAESBlockByteAt(block, 0, 3));
     
-    PMAESBlockSetByteAt(block, 3, 3, PMAESBlockByteAt(block, 3, 0));
-    PMAESBlockSetByteAt(block, 3, 0, PMAESBlockByteAt(block, 3, 1));
-    PMAESBlockSetByteAt(block, 3, 1, PMAESBlockByteAt(block, 3, 2));
-    PMAESBlockSetByteAt(block, 3, 2, PMAESBlockByteAt(block, 3, 3));
+    PMAESBlockSetByteAt(&nblock, 1, 0, PMAESBlockByteAt(block, 1, 1));
+    PMAESBlockSetByteAt(&nblock, 1, 1, PMAESBlockByteAt(block, 1, 2));
+    PMAESBlockSetByteAt(&nblock, 1, 2, PMAESBlockByteAt(block, 1, 3));
+    PMAESBlockSetByteAt(&nblock, 1, 3, PMAESBlockByteAt(block, 1, 0));
+    
+    PMAESBlockSetByteAt(&nblock, 2, 0, PMAESBlockByteAt(block, 2, 2));
+    PMAESBlockSetByteAt(&nblock, 2, 1, PMAESBlockByteAt(block, 2, 3));
+    PMAESBlockSetByteAt(&nblock, 2, 2, PMAESBlockByteAt(block, 2, 0));
+    PMAESBlockSetByteAt(&nblock, 2, 3, PMAESBlockByteAt(block, 2, 1));
+    
+    PMAESBlockSetByteAt(&nblock, 3, 0, PMAESBlockByteAt(block, 3, 3));
+    PMAESBlockSetByteAt(&nblock, 3, 1, PMAESBlockByteAt(block, 3, 0));
+    PMAESBlockSetByteAt(&nblock, 3, 2, PMAESBlockByteAt(block, 3, 1));
+    PMAESBlockSetByteAt(&nblock, 3, 3, PMAESBlockByteAt(block, 3, 2));
+    
+    for (int k = 0; k < 16; k++) {
+        block->data[k] = nblock.data[k];
+    }
 }
 
 void PMAESShiftRowsInv(PMAESBlock* block) {
-    PMAESBlockSetByteAt(block, 1, 3, PMAESBlockByteAt(block, 1, 0));
-    PMAESBlockSetByteAt(block, 1, 0, PMAESBlockByteAt(block, 1, 1));
-    PMAESBlockSetByteAt(block, 1, 1, PMAESBlockByteAt(block, 1, 2));
-    PMAESBlockSetByteAt(block, 1, 2, PMAESBlockByteAt(block, 1, 3));
+    PMAESBlock nblock;
     
-    PMAESBlockSetByteAt(block, 2, 2, PMAESBlockByteAt(block, 2, 0));
-    PMAESBlockSetByteAt(block, 2, 3, PMAESBlockByteAt(block, 2, 1));
-    PMAESBlockSetByteAt(block, 2, 0, PMAESBlockByteAt(block, 2, 2));
-    PMAESBlockSetByteAt(block, 2, 1, PMAESBlockByteAt(block, 2, 3));
+    PMAESBlockSetByteAt(&nblock, 0, 0, PMAESBlockByteAt(block, 0, 0));
+    PMAESBlockSetByteAt(&nblock, 0, 1, PMAESBlockByteAt(block, 0, 1));
+    PMAESBlockSetByteAt(&nblock, 0, 2, PMAESBlockByteAt(block, 0, 2));
+    PMAESBlockSetByteAt(&nblock, 0, 3, PMAESBlockByteAt(block, 0, 3));
     
-    PMAESBlockSetByteAt(block, 3, 1, PMAESBlockByteAt(block, 3, 0));
-    PMAESBlockSetByteAt(block, 3, 2, PMAESBlockByteAt(block, 3, 1));
-    PMAESBlockSetByteAt(block, 3, 3, PMAESBlockByteAt(block, 3, 2));
-    PMAESBlockSetByteAt(block, 3, 0, PMAESBlockByteAt(block, 3, 3));
+    PMAESBlockSetByteAt(&nblock, 1, 0, PMAESBlockByteAt(block, 1, 3));
+    PMAESBlockSetByteAt(&nblock, 1, 1, PMAESBlockByteAt(block, 1, 0));
+    PMAESBlockSetByteAt(&nblock, 1, 2, PMAESBlockByteAt(block, 1, 1));
+    PMAESBlockSetByteAt(&nblock, 1, 3, PMAESBlockByteAt(block, 1, 2));
+    
+    PMAESBlockSetByteAt(&nblock, 2, 0, PMAESBlockByteAt(block, 2, 2));
+    PMAESBlockSetByteAt(&nblock, 2, 1, PMAESBlockByteAt(block, 2, 3));
+    PMAESBlockSetByteAt(&nblock, 2, 2, PMAESBlockByteAt(block, 2, 0));
+    PMAESBlockSetByteAt(&nblock, 2, 3, PMAESBlockByteAt(block, 2, 1));
+    
+    PMAESBlockSetByteAt(&nblock, 3, 0, PMAESBlockByteAt(block, 3, 1));
+    PMAESBlockSetByteAt(&nblock, 3, 1, PMAESBlockByteAt(block, 3, 2));
+    PMAESBlockSetByteAt(&nblock, 3, 2, PMAESBlockByteAt(block, 3, 3));
+    PMAESBlockSetByteAt(&nblock, 3, 3, PMAESBlockByteAt(block, 3, 0));
+    
+    for (int k = 0; k < 16; k++) {
+        block->data[k] = nblock.data[k];
+    }
 }
 
+void PMAESBlockPrint(PMAESBlock* block);
+
 void PMAESMixColumns(PMAESBlock* block) {
+    PMAESBlock nblock;
+    
     for (int k = 0; k < 4; k++) {
-        uint8_t a = (2 * PMAESBlockByteAt(block, 0, k)) + (3 * PMAESBlockByteAt(block, 1, k))
-            + (1 * PMAESBlockByteAt(block, 2, k)) + (1 * PMAESBlockByteAt(block, 3, k));
-        PMAESBlockSetByteAt(block, 0, k, a);
-        
-        a = (1 * PMAESBlockByteAt(block, 0, k)) + (2 * PMAESBlockByteAt(block, 1, k))
-        + (3 * PMAESBlockByteAt(block, 2, k)) + (1 * PMAESBlockByteAt(block, 3, k));
-        PMAESBlockSetByteAt(block, 1, k, a);
-        
-        a = (1 * PMAESBlockByteAt(block, 0, k)) + (1 * PMAESBlockByteAt(block, 1, k))
-        + (2 * PMAESBlockByteAt(block, 2, k)) + (3 * PMAESBlockByteAt(block, 3, k));
-        PMAESBlockSetByteAt(block, 2, k, a);
-        
-        a = (3 * PMAESBlockByteAt(block, 0, k)) + (1 * PMAESBlockByteAt(block, 1, k))
-        + (1 * PMAESBlockByteAt(block, 2, k)) + (2 * PMAESBlockByteAt(block, 3, k));
-        PMAESBlockSetByteAt(block, 0, k, a);
+        uint8_t a = (2 * PMAESBlockByteAt(block, 0, k)) +
+            (3 * PMAESBlockByteAt(block, 1, k)) +
+            (1 * PMAESBlockByteAt(block, 2, k)) +
+            (1 * PMAESBlockByteAt(block, 3, k));
+        printf("%i\n", a);
+        PMAESBlockSetByteAt(&nblock, 0, k, a);
+            
+        a = (1 * PMAESBlockByteAt(block, 0, k)) +
+            (2 * PMAESBlockByteAt(block, 1, k)) +
+            (3 * PMAESBlockByteAt(block, 2, k)) +
+            (1 * PMAESBlockByteAt(block, 3, k));
+        printf("%i\n", a);
+        PMAESBlockSetByteAt(&nblock, 1, k, a);
+            
+        a = (1 * PMAESBlockByteAt(block, 0, k)) +
+            (1 * PMAESBlockByteAt(block, 1, k)) +
+            (2 * PMAESBlockByteAt(block, 2, k)) +
+            (3 * PMAESBlockByteAt(block, 3, k));
+        printf("%i\n", a);
+        PMAESBlockSetByteAt(&nblock, 2, k, a);
+            
+        a = (3 * PMAESBlockByteAt(block, 0, k)) +
+            (1 * PMAESBlockByteAt(block, 1, k)) +
+            (1 * PMAESBlockByteAt(block, 2, k)) +
+            (2 * PMAESBlockByteAt(block, 3, k));
+        printf("%i\n", a);
+        PMAESBlockSetByteAt(&nblock, 3, k, a);
+    }
+    
+    PMAESBlockPrint(&nblock);
+    
+    for (int k = 0; k < 16; k++) {
+        block->data[k] = nblock.data[k];
     }
 }
 
 void PMAESMixColumnsInv(PMAESBlock* block) {
+    PMAESBlock nblock;
+    
     for (int k = 0; k < 4; k++) {
-        uint8_t a = (14 * PMAESBlockByteAt(block, 0, k)) + (11 * PMAESBlockByteAt(block, 1, k))
-        + (13 * PMAESBlockByteAt(block, 2, k)) + (9 * PMAESBlockByteAt(block, 3, k));
-        PMAESBlockSetByteAt(block, 0, k, a);
+        uint8_t a = (14 * PMAESBlockByteAt(block, 0, k)) +
+            (11 * PMAESBlockByteAt(block, 1, k)) +
+            (13 * PMAESBlockByteAt(block, 2, k)) +
+            (9 * PMAESBlockByteAt(block, 3, k));
         
-        a = (9 * PMAESBlockByteAt(block, 0, k)) + (14 * PMAESBlockByteAt(block, 1, k))
-        + (11 * PMAESBlockByteAt(block, 2, k)) + (13 * PMAESBlockByteAt(block, 3, k));
-        PMAESBlockSetByteAt(block, 1, k, a);
+        PMAESBlockSetByteAt(&nblock, 0, k, a);
         
-        a = (13 * PMAESBlockByteAt(block, 0, k)) + (9 * PMAESBlockByteAt(block, 1, k))
-        + (14 * PMAESBlockByteAt(block, 2, k)) + (11 * PMAESBlockByteAt(block, 3, k));
-        PMAESBlockSetByteAt(block, 2, k, a);
+        a = (9 * PMAESBlockByteAt(block, 0, k)) +
+            (14 * PMAESBlockByteAt(block, 1, k)) +
+            (11 * PMAESBlockByteAt(block, 2, k)) +
+            (13 * PMAESBlockByteAt(block, 3, k));
+        PMAESBlockSetByteAt(&nblock, 1, k, a);
         
-        a = (11 * PMAESBlockByteAt(block, 0, k)) + (13 * PMAESBlockByteAt(block, 1, k))
-        + (9 * PMAESBlockByteAt(block, 2, k)) + (14 * PMAESBlockByteAt(block, 3, k));
-        PMAESBlockSetByteAt(block, 0, k, a);
+        a = (13 * PMAESBlockByteAt(block, 0, k)) +
+            (9 * PMAESBlockByteAt(block, 1, k)) +
+            (14 * PMAESBlockByteAt(block, 2, k)) +
+            (11 * PMAESBlockByteAt(block, 3, k));
+        PMAESBlockSetByteAt(&nblock, 2, k, a);
+        
+        a = (11 * PMAESBlockByteAt(block, 0, k)) +
+            (13 * PMAESBlockByteAt(block, 1, k)) +
+            (9 * PMAESBlockByteAt(block, 2, k)) +
+            (14 * PMAESBlockByteAt(block, 3, k));
+        PMAESBlockSetByteAt(&nblock, 3, k, a);
+    }
+    
+    PMAESBlockPrint(&nblock);
+    
+    for (int k = 0; k < 16; k++) {
+        block->data[k] = nblock.data[k];
+    }
+}
+
+void PMAESSubBytes(PMAESBlock* block) {
+    for (int k = 0; k < 4; k++) {
+        for (int l = 0; l < 4; l++) {
+            
+        }
     }
 }
 
