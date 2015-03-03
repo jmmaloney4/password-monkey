@@ -16,37 +16,35 @@
 *
 *** ------------------------------------------------------------------------------ ***/
 
-#include <aes.h>
+#include <pmcore/aes.h>
+#include <stdio.h>
 
-AESBlock AESSubBytes(AESBlock in) {
-    for (int k = 0; k < 4; k++) {
-        for (int l = 0; l < 4; l++) {
-            in.data[k][l] = AESSBox[in.data[k][l]];
-        }
+void PMAESShiftRows(PMAESBlock* block);
+void PMAESShiftRowsInv(PMAESBlock* block);
+
+int main(void) {
+    
+    PMAESBlock block = { { 0, 1, 14, 51, 51, 23, 5, 1, 9 } };
+    
+    printf("0x");
+    for (int k = 0; k < 16; k++) {
+        printf("%02x", block.data[k]);
     }
-    return in;
-}
-
-AESBlock AESShiftRows(AESBlock in) {
-    in.data[1][0] = in.data[1][1];
-    in.data[1][1] = in.data[1][2];
-    in.data[1][2] = in.data[1][3];
-    in.data[1][3] = in.data[1][0];
+    printf("\n");
     
-    in.data[2][0] = in.data[1][2];
-    in.data[2][1] = in.data[1][3];
-    in.data[2][2] = in.data[1][0];
-    in.data[2][3] = in.data[1][1];
+    PMAESShiftRows(&block);
     
-    in.data[2][0] = in.data[1][3];
-    in.data[2][1] = in.data[1][0];
-    in.data[2][2] = in.data[1][1];
-    in.data[2][3] = in.data[1][2];
+    printf("0x");
+    for (int k = 0; k < 16; k++) {
+        printf("%02x", block.data[k]);
+    }
+    printf("\n");
     
-    return in;
-}
-
-AESBlock AESEncrypt(AESBlock pt, AES128KeyBlock key) {
-    AESBlock rv;
-    return rv;
+    PMAESShiftRowsInv(&block);
+    
+    printf("0x");
+    for (int k = 0; k < 16; k++) {
+        printf("%02x", block.data[k]);
+    }
+    printf("\n");
 }
