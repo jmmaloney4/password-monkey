@@ -91,7 +91,9 @@ uint8_t PMAESRcon(uint8_t index) {
 }
 
 uint8_t PMAESBlockByteAt(PMAESBlock* block, uint8_t row, uint8_t col) {
-    return block->data[(col == 0 ? 0 : (col * 4)) + row];
+    uint8_t a = block->data[(col == 0 ? 0 : (col * 4)) + row];
+    printf("-- %i\n", a);
+    return a;
 }
 
 uint8_t PMAESKeyByteAt(PMAESKey* key, uint8_t row, uint8_t col) {
@@ -167,11 +169,11 @@ void PMAESBlockPrint(PMAESBlock* block);
 void PMAESMixColumns(PMAESBlock* block) {
     PMAESBlock nblock;
     
-    for (int k = 0; k < 4; k++) {
-        uint8_t a = (2 * PMAESBlockByteAt(block, 0, k)) +
-            (3 * PMAESBlockByteAt(block, 1, k)) +
-            (1 * PMAESBlockByteAt(block, 2, k)) +
-            (1 * PMAESBlockByteAt(block, 3, k));
+    for (uint8_t k = 0; k < 4; k++) {
+        uint8_t a = ((uint8_t) 2 * PMAESBlockByteAt(block, 0, k)) +
+            ((uint8_t) 3 * PMAESBlockByteAt(block, 1, k)) +
+            ((uint8_t) 1 * PMAESBlockByteAt(block, 2, k)) +
+            ((uint8_t) 1 * PMAESBlockByteAt(block, 3, k));
         printf("%i\n", a);
         PMAESBlockSetByteAt(&nblock, 0, k, a);
             
